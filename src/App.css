@@ -1,5 +1,9 @@
 .App {
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 50px;
 }
 
 .App-logo {
@@ -35,4 +39,51 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+
+.Toolbar {
+  display: flex;
+  margin-bottom: 10px;
+}
+
+.Toolbar button {
+  padding: 8px 12px;
+  font-size: 16px;
+  border: none;
+  background-color: #f2f2f2;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-right: 4px;
+  width: 40px;
+  border-radius: 4px;
+}
+
+.Toolbar button:last-child {
+  margin-right: 0;
+}
+
+.Toolbar button:hover {
+  background-color: #e0e0e0;
+}
+
+.EditorContainer {
+  border: 1px solid #ccc;
+  padding: 10px;
+  width: 600px;
+  min-height: 200px;
+  background-color: #fff;
+}
+
+.Content {
+  margin-top: 20px;
+  width: 600px;
+  border: 1px solid #ccc;
+  padding: 10px;
+  background-color: #f2f2f2;
+  color: #333;
+}
+
+.Content h2 {
+  margin-top: 0;
 }
