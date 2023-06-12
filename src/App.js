@@ -21,7 +21,8 @@ function App() {
   };
 
   return (
-    <div className="App"> 
+    <div className="App">
+      <div className='EditorSection'> 
       <div className="Toolbar">
         <button onClick={() => handleInlineStyle('BOLD')}><b>B</b></button>
         <button onClick={() => handleInlineStyle('ITALIC')}><i>I</i></button>
@@ -35,6 +36,7 @@ function App() {
       </div>
       <div className="EditorContainer">
         <Editor editorState={editorState} onChange={handleEditorChange} />
+      </div>
       </div>
       <div className="Content">
         <h2>Content Preview:</h2>
