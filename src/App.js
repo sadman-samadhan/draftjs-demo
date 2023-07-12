@@ -5,15 +5,66 @@ import {
   Modifier,
   RichUtils,
   convertToRaw,
+  convertFromRaw,
 } from "draft-js";
-import draftToHtml from "draftjs-to-html";
-
-import "draft-js/dist/Draft.css";
+import createImagePlugin from '@draft-js-plugins/image';
+import createDragNDropUploadPlugin from '@draft-js-plugins/drag-n-drop';
+import readFile from '@draft-js-plugins/drag-n-drop';
+import "draft-js/dist/Draft.css"; 
 import "./App.css";
 
 function App() {
+  const imagePlugin = createImagePlugin();
+
+  const initialState = {
+    entityMap: {
+      0: {
+        type: "IMAGE",
+        mutability: "IMMUTABLE",
+        data: {
+          src: "https://dummyimage.com/600x400/000/fff",
+        },
+      },
+    },
+    blocks: [
+      {
+        key: "9gm3s",
+        text: "You can have images in your text field. This is a very rudimentary example, but you can enhance the image plugin with resizing, focus or alignment plugins.",
+        type: "bold",
+        depth: 0,
+        inlineStyleRanges: [],
+        entityRanges: [],
+        data: {},
+      },
+      {
+        key: "ov7r",
+        text: " ",
+        type: "atomic",
+        depth: 0,
+        inlineStyleRanges: [],
+        entityRanges: [
+          {
+            offset: 0,
+            length: 1,
+            key: 0,
+          },
+        ],
+        data: {},
+      },
+      {
+        key: "e23a8",
+        text: "See advanced examples further down …",
+        type: "unstyled",
+        depth: 0,
+        inlineStyleRanges: [],
+        entityRanges: [],
+        data: {},
+      },
+    ],
+  };
+
   const [editorState, setEditorState] = useState(() =>
-    EditorState.createEmpty()
+    EditorState.createWithContent(convertFromRaw(initialState))
   );
   const editorRef = useRef(null);
 
@@ -21,6 +72,7 @@ function App() {
     editorRef.current.focus();
   };
 
+  
   const handleEditorChange = (newEditorState) => {
     setEditorState(newEditorState);
   };
@@ -74,6 +126,79 @@ function App() {
 
     handleEditorChange(nextEditorState);
   };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const files = Array.from(e.dataTransfer.files);
+    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+
+    if (imageFiles.length === 0) {
+      return;
+    }
+
+    const file = imageFiles[0];
+    console.log(imageFiles);
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const url = reader.result;
+      console.log(url);
+      const contentState = editorState.getCurrentContent();
+      const contentStateWithEntity = contentState.createEntity(
+        "IMAGE",
+        "IMMUTABLE",
+        { src: url }
+      );
+      const entityKey = contentStateWithEntity.getLastCreatedEntityKey();
+      const newEditorState = EditorState.set(editorState, {
+        currentContent: contentStateWithEntity,
+      });
+      const newContentState = Modifier.insertText(
+        newEditorState.getCurrentContent(),
+        newEditorState.getSelection(),
+        " ",
+        null,
+        entityKey
+      );
+
+      const newEditorStateWithImage = EditorState.push(
+        newEditorState,
+        newContentState,
+        "insert-characters"
+      );
+
+      setEditorState(newEditorStateWithImage);
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  
+  // function mockUpload(data, success, failed, progress) {
+  //   function doProgress(percent) {
+  //     progress(percent || 1);
+  //     if (percent === 100) {
+  //       // Start reading the file
+  //       Promise.all(data.files.map(readFile)).then((files) =>
+  //         success(files, { retainSrc: true })
+  //       );
+  //     } else {
+  //       setTimeout(doProgress, 250, (percent || 0) + 10);
+  //     }
+  //   }
+  
+  //   doProgress();
+  // }
+
+  // const dragNDropFileUploadPlugin = createDragNDropUploadPlugin({
+  //   handleUpload: mockUpload,
+  //   addImage: imagePlugin.addImage,
+  // });
 
   const ColorControls = () => {
     const currentStyle = editorState.getCurrentInlineStyle();
@@ -143,55 +268,26 @@ function App() {
             1.
           </button>
         </div>
-        <div className="EditorContainer">
+        <div
+          className="EditorContainer"
+          onClick={focus}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+        >
           <ColorControls />
-          <div className="" onClick={focus}>
+          <div className="" ref={editorRef}>
             <Editor
               customStyleMap={colorStyleMap}
+              plugins={[imagePlugin]} 
               editorState={editorState}
               onChange={handleEditorChange}
-              placeholder="Write something colorful..."
-              ref={editorRef}
+              placeholder="Write something"
             />
           </div>
         </div>
       </div>
     </div>
   );
-}
-
-function draftjsToHtml(editorState) {
-  const contentState = editorState.getCurrentContent();
-  const rawContentState = convertToRaw(contentState);
-  const html = draftToHtml(rawContentState);
-  return html;
-}
-
-function convertToHtmlString(contentState) {
-  const html = convertToHtml(contentState);
-  const encodedHtml = encodeHtmlEntities(html);
-  return encodedHtml;
-}
-
-function convertToHtml(contentState) {
-  const contentStateWithEntity = convertMentionsToEntities(contentState);
-  const contentHtml = stateToHTML(contentStateWithEntity);
-  return contentHtml;
-}
-
-function convertMentionsToEntities(contentState) {
-  // Handle mentions conversion to entities if needed
-  return contentState;
-}
-
-function stateToHTML(contentState) {
-  // Implement the conversion from Draft.js content state to HTML if needed
-  return ""; // Return an empty string for now
-}
-
-function encodeHtmlEntities(html) {
-  // Implement HTML entity encoding if needed
-  return html; // Return the original HTML string for now
 }
 
 const COLORS = [
