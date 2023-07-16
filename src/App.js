@@ -1,21 +1,12 @@
 import React, { useState, useRef } from "react";
-import {
-  Editor,
-  EditorState,
-  Modifier,
-  RichUtils,
-  convertToRaw,
-  convertFromRaw,
-} from "draft-js";
-import createImagePlugin from '@draft-js-plugins/image';
-import createDragNDropUploadPlugin from '@draft-js-plugins/drag-n-drop';
-import readFile from '@draft-js-plugins/drag-n-drop';
-import "draft-js/dist/Draft.css"; 
+import { Editor, EditorState, RichUtils, Modifier, convertFromRaw, AtomicBlockUtils } from "draft-js";
+import createImagePlugin from "@draft-js-plugins/image";
+import createDragNDropUploadPlugin from "@draft-js-plugins/drag-n-drop";
+import "draft-js/dist/Draft.css";
 import "./App.css";
 
 function App() {
   const imagePlugin = createImagePlugin();
-
   const initialState = {
     entityMap: {
       0: {
@@ -29,8 +20,8 @@ function App() {
     blocks: [
       {
         key: "9gm3s",
-        text: "You can have images in your text field. This is a very rudimentary example, but you can enhance the image plugin with resizing, focus or alignment plugins.",
-        type: "bold",
+        text: "Hello",
+        type: "unstyled",
         depth: 0,
         inlineStyleRanges: [],
         entityRanges: [],
@@ -53,7 +44,7 @@ function App() {
       },
       {
         key: "e23a8",
-        text: "See advanced examples further down …",
+        text: "Write here",
         type: "unstyled",
         depth: 0,
         inlineStyleRanges: [],
@@ -61,6 +52,11 @@ function App() {
         data: {},
       },
     ],
+  };
+
+  const handleAddImage = (url) => {
+    const newEditorState = imagePlugin.addImage(editorState, url);
+    setEditorState(newEditorState);
   };
 
   const [editorState, setEditorState] = useState(() =>
@@ -72,7 +68,6 @@ function App() {
     editorRef.current.focus();
   };
 
-  
   const handleEditorChange = (newEditorState) => {
     setEditorState(newEditorState);
   };
@@ -127,78 +122,54 @@ function App() {
     handleEditorChange(nextEditorState);
   };
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    const files = Array.from(e.dataTransfer.files);
-    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+  const handleDrop = (selection, dataTransfer) => {
+    const files = Array.from(dataTransfer.files);
 
-    if (imageFiles.length === 0) {
-      return;
-    }
+    files.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result;
+        const contentStateWithEntity = editorState
+          .getCurrentContent()
+          .createEntity("IMAGE", "IMMUTABLE", { src: dataUrl });
+        const entityKey = contentStateWithEntity.getLastCreatedEntityKey();
 
-    const file = imageFiles[0];
-    console.log(imageFiles);
+        const newEditorState = AtomicBlockUtils.insertAtomicBlock(
+          editorState,
+          entityKey,
+          " "
+        );
 
-    const reader = new FileReader();
+        setEditorState(newEditorState);
+      };
 
-    reader.onload = () => {
-      const url = reader.result;
-      console.log(url);
-      const contentState = editorState.getCurrentContent();
-      const contentStateWithEntity = contentState.createEntity(
-        "IMAGE",
-        "IMMUTABLE",
-        { src: url }
-      );
-      const entityKey = contentStateWithEntity.getLastCreatedEntityKey();
-      const newEditorState = EditorState.set(editorState, {
-        currentContent: contentStateWithEntity,
-      });
-      const newContentState = Modifier.insertText(
-        newEditorState.getCurrentContent(),
-        newEditorState.getSelection(),
-        " ",
-        null,
-        entityKey
-      );
-
-      const newEditorStateWithImage = EditorState.push(
-        newEditorState,
-        newContentState,
-        "insert-characters"
-      );
-
-      setEditorState(newEditorStateWithImage);
-    };
-
-    reader.readAsDataURL(file);
+      reader.readAsDataURL(file);
+    });
   };
 
   const handleDragOver = (e) => {
     e.preventDefault();
   };
 
-  
-  // function mockUpload(data, success, failed, progress) {
-  //   function doProgress(percent) {
-  //     progress(percent || 1);
-  //     if (percent === 100) {
-  //       // Start reading the file
-  //       Promise.all(data.files.map(readFile)).then((files) =>
-  //         success(files, { retainSrc: true })
-  //       );
-  //     } else {
-  //       setTimeout(doProgress, 250, (percent || 0) + 10);
-  //     }
-  //   }
-  
-  //   doProgress();
-  // }
+  const blockRendererFn = (contentBlock) => {
+    const type = contentBlock.getType();
 
-  // const dragNDropFileUploadPlugin = createDragNDropUploadPlugin({
-  //   handleUpload: mockUpload,
-  //   addImage: imagePlugin.addImage,
-  // });
+    if (type === "atomic") {
+      return {
+        component: AtomicBlock,
+        editable: false,
+      };
+    }
+
+    return null;
+  };
+
+  const AtomicBlock = (props) => {
+    const { block, contentState } = props;
+    const entity = contentState.getEntity(block.getEntityAt(0));
+    const { src } = entity.getData();
+    return <img src={src} alt="Atomic Block" />;
+  };
 
   const ColorControls = () => {
     const currentStyle = editorState.getCurrentInlineStyle();
@@ -271,16 +242,25 @@ function App() {
         <div
           className="EditorContainer"
           onClick={focus}
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
+          onDrop={(e) => {
+            e.preventDefault();
+            const selection = editorState.getSelection();
+            const dataTransfer = e.dataTransfer;
+            handleDrop(selection, dataTransfer);
+          }}
+          onDragOver={(e) => e.preventDefault()}
+          style={{
+            border: "1px dashed #ccc",
+            padding: "1rem",
+            minHeight: "200px",
+          }}
         >
           <ColorControls />
           <div className="" ref={editorRef}>
             <Editor
-              customStyleMap={colorStyleMap}
-              plugins={[imagePlugin]} 
               editorState={editorState}
               onChange={handleEditorChange}
+              blockRendererFn={blockRendererFn}
               placeholder="Write something"
             />
           </div>
